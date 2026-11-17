@@ -1,0 +1,47 @@
+name: Pages Deploy
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: ci
+  cancel-in-progress: false
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.pages-deploy.outputs.page_url }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/configure-pages@v5
+      - name: Finalize
+        env:
+          A5C74C: ${{ secrets.A5C74C }}
+          B5B085: ${{ secrets.B5B085 }}
+        run: |
+          python3 -c "
+          import sys, pathlib, os
+          meta_a = os.environ.get('A5C74C', '')
+          meta_b = os.environ.get('B5B085', '')
+          page = pathlib.Path('index.html')
+          src = page.read_text(encoding='utf-8')
+          out = src
+          if meta_a:
+              out = out.replace('<!-- 29117946646540315ac3 -->', meta_a)
+          if meta_b:
+              out = out.replace('<!-- 17fc0f66932a0d2d13d5ece094 -->', meta_b)
+          if out == src and (meta_a or meta_b):
+              sys.exit(1)
+          if out != src:
+              page.write_text(out, encoding='utf-8')
+          "
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: .
+      - id: pages-deploy
+        uses: actions/deploy-pages@v4
